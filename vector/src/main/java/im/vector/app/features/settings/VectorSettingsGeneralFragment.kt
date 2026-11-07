@@ -258,10 +258,15 @@ class VectorSettingsGeneralFragment :
              */
 
             it.onPreferenceClickListener = Preference.OnPreferenceClickListener {
-                displayLoadingView()
-                MainActivity.restartApp(requireActivity(), MainActivityArgs(clearCache = true))
-                false
+                com.google.android.material.dialog.MaterialAlertDialogBuilder(requireActivity()).setTitle("Очистить кэш").setMessage("Вы уверены, что хотите очистить кэш приложения?")
+                        .setNegativeButton("Отмена", null)
+                        .setPositiveButton("Очистить") { _, _ ->
+                            displayLoadingView()
+                            MainActivity.restartApp(activity = requireActivity(), args = MainActivityArgs(clearCache = true))
+                        }.show()
+                true
             }
+
         }
 
         (findPreference(VectorPreferences.SETTINGS_ALLOW_INTEGRATIONS_KEY) as? VectorSwitchPreference)?.let {
@@ -292,20 +297,23 @@ class VectorSettingsGeneralFragment :
                 val size = getCacheSize()
                 it.summary = TextUtils.formatFileSize(requireContext(), size)
                 it.onPreferenceClickListener = Preference.OnPreferenceClickListener {
-                    lifecycleScope.launch(Dispatchers.Main) {
-                        // On UI Thread
-                        displayLoadingView()
-                        Glide.get(requireContext()).clearMemory()
-                        session.fileService().clearCache()
-                        val newSize = withContext(Dispatchers.IO) {
-                            // On BG thread
-                            Glide.get(requireContext()).clearDiskCache()
-                            getCacheSize()
-                        }
-                        it.summary = TextUtils.formatFileSize(requireContext(), newSize)
-                        hideLoadingView()
-                    }
-                    false
+                    com.google.android.material.dialog.MaterialAlertDialogBuilder(requireContext()).setTitle("Очистить кэш медиа")
+                            .setMessage("Вы уверены, что хотите удалить сохраненные изображения и другие медиафайлы?")
+                            .setNegativeButton("Отмена", null)
+                            .setPositiveButton("Очистить") { _, _ ->
+                                lifecycleScope.launch(context = Dispatchers.Main) {
+                                    displayLoadingView()
+                                    Glide.get(requireContext()).clearMemory()
+                                    session.fileService().clearCache()
+                                    val newSize = withContext(Dispatchers.IO) {
+                                        Glide.get(requireContext()).clearDiskCache()
+                                        getCacheSize()
+                                    }
+                                    it.summary = TextUtils.formatFileSize(context = requireContext(), sizeBytes = newSize)
+                                    hideLoadingView()
+                                }
+                            }.show()
+                    true
                 }
             }
         }
